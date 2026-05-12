@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Am I Affected? — Post-SAVE Decision Tree · Ghost.zero</title>
+<meta name="description" content="Six questions tell you which post-SAVE repayment path fits your situation. About 90 seconds. Free.">
+<link rel="icon" href="assets/ghost-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  /* ===== flow-chart layout ===== */
+  .tree-wrap { max-width: 720px; margin: 0 auto; }
+
+  /* trail (past answered questions) */
+  .trail { display: flex; flex-direction: column; gap: 0; margin-bottom: 0; }
+  .trail-chip {
+    background: var(--card);
+    border: 1px solid var(--card-edge);
+    border-left: 5px solid var(--brand);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: background 0.12s, transform 0.12s;
+    font-size: 14.5px;
+    animation: chipIn 0.32s cubic-bezier(.2,.7,.3,1.1);
+  }
+  .trail-chip:hover {
+    background: var(--bg-soft);
+    transform: translateX(2px);
+  }
+  .trail-chip .check {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--brand); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .trail-chip .chip-label { color: var(--ink-soft); flex: 1; min-width: 0; }
+  .trail-chip .chip-label strong { color: var(--ink); }
+  .trail-chip .chip-answer {
+    background: var(--neon); color: var(--ink);
+    padding: 4px 12px; border-radius: 999px;
+    font-family: var(--font-display); font-weight: 700; font-size: 13px;
+    white-space: nowrap;
+  }
+  .trail-chip .chip-rewind {
+    color: var(--ink-faint); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.05em; font-weight: 700;
+    opacity: 0; transition: opacity 0.12s;
+  }
+  .trail-chip:hover .chip-rewind { opacity: 1; }
+
+  /* vertical connector arrow */
+  .connector {
+    display: flex; justify-content: center;
+    margin: 0; height: 28px; position: relative;
+    animation: connIn 0.32s ease;
+  }
+  .connector::before {
+    content: ""; position: absolute; top: 0; bottom: 0;
+    width: 3px; background: var(--brand);
+    border-radius: 2px;
+  }
+  .connector::after {
+    content: "▼"; position: absolute; bottom: -2px;
+    color: var(--brand); font-size: 14px; line-height: 1;
+    background: var(--bg); padding: 0 2px;
+  }
+
+  @keyframes chipIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes connIn {
+    from { opacity: 0; height: 0; }
+    to { opacity: 1; height: 28px; }
+  }
+
+  /* active question card */
+  .active-card {
+    background: var(--card); border: 2px solid var(--brand);
+    border-radius: var(--radius); padding: 28px 32px;
+    box-shadow: 0 10px 32px rgba(77, 174, 107, 0.18);
+    position: relative;
+    animation: cardIn 0.32s cubic-bezier(.2,.7,.3,1.1);
+  }
+  @media (max-width: 600px) { .active-card { padding: 22px 20px; } }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .active-card .q-num {
+    display: inline-block; background: var(--neon); color: var(--ink);
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 12px; padding: 4px 12px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .active-card h2 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 24px; margin: 4px 0 12px;
+    color: var(--ink); line-height: 1.25;
+  }
+  .active-card p { margin: 8px 0; }
+  .active-card .why {
+    font-size: 14.5px; color: var(--ink-soft);
+    background: var(--bg-soft); padding: 12px 16px;
+    border-radius: var(--radius-sm); border-left: 3px solid var(--brand);
+    margin: 14px 0 18px;
+  }
+  .active-card .why strong { color: var(--brand-deep); }
+
+  .answer-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+  .answer-btn {
+    flex: 1 1 220px;
+    background: var(--card); color: var(--ink);
+    border: 2px solid var(--card-edge); border-radius: var(--radius);
+    padding: 16px 20px; font-family: var(--font-body); font-weight: 700;
+    font-size: 17px; cursor: pointer; text-align: left;
+    transition: transform 0.1s, border-color 0.1s, background 0.1s, box-shadow 0.1s;
+  }
+  .answer-btn:hover {
+    border-color: var(--brand); background: var(--bg-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(77, 174, 107, 0.16);
+  }
+  .answer-btn .lbl {
+    display: block; font-size: 12px; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 0.07em; font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .answer-btn.yes:hover .lbl { color: var(--brand-deep); }
+  .answer-btn.no:hover .lbl { color: var(--pink-deep); }
+
+  /* destination card (the path you land on) */
+  .destination {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: 0 16px 40px rgba(77, 174, 107, 0.22);
+    overflow: hidden;
+    border: 2px solid var(--brand);
+    animation: cardIn 0.4s cubic-bezier(.2,.7,.3,1.1);
+  }
+  .destination.parent-plus { border-color: var(--pink-deep); box-shadow: 0 16px 40px rgba(233, 115, 128, 0.22); }
+  .destination-banner {
+    background: linear-gradient(135deg, var(--neon) 0%, var(--brand) 100%);
+    color: var(--ink); padding: 22px 28px;
+    font-family: var(--font-display); font-weight: 700;
+  }
+  .destination.parent-plus .destination-banner {
+    background: linear-gradient(135deg, var(--pink) 0%, var(--pink-deep) 100%);
+    color: #fff;
+  }
+  .destination-banner .small {
+    font-family: var(--font-body); font-weight: 700; font-size: 13px;
+    opacity: 0.85; text-transform: uppercase; letter-spacing: 0.08em;
+    display: block; margin-bottom: 4px;
+  }
+  .destination-banner .big {
+    font-size: 26px; line-height: 1.15;
+  }
+  .destination-body { padding: 24px 28px; }
+  @media (max-width: 600px) {
+    .destination-banner, .destination-body { padding-left: 20px; padding-right: 20px; }
+    .destination-banner .big { font-size: 22px; }
+  }
+  .destination-body h3 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: 18px; margin: 18px 0 8px;
+    color: var(--brand-deep);
+  }
+  .destination-body h3:first-child { margin-top: 4px; }
+  .destination-body ol, .destination-body ul { padding-left: 22px; }
+  .destination-body li { margin: 6px 0; }
+  .destination-body p { margin: 10px 0; }
+
+  /* control bar */
+  .controls {
+    display: flex; justify-content: center; gap: 14px;
+    margin-top: 22px;
+  }
+  .controls a {
+    color: var(--ink-soft); text-decoration: none; cursor: pointer;
+    font-size: 14px; font-weight: 700;
+    padding: 8px 14px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--card-edge);
+    transition: background 0.12s;
+  }
+  .controls a:hover { background: var(--bg-soft); color: var(--brand-deep); }
+
+  /* hide-default templates */
+  template { display: none; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="brand-mark" href="./">
+      <img src="assets/ghost-logo.png" alt="Ghost.zero">
+      <span class="brand-name">Ghost.zero</span>
+    </a>
+    <div class="topnav-links">
+      <a href="playbook.html">Playbook</a>
+      <a href="decision-tree.html" class="active">Decision Tree</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Am I affected?</h1>
+    <p class="kicker">Walk down the tree. Each answer drops you one step. At the bottom, your path.</p>
+    <p class="verified">Last verified May 5, 2026</p>
+  </div>
+</section>
+
+<main>
+  <div class="tree-wrap">
+
+    <!-- trail container — chips of past answers append here -->
+    <div class="trail" id="trail"></div>
+
+    <!-- active step container — current question or final destination renders here -->
+    <div id="active"></div>
+
+    <!-- control bar -->
+    <div class="controls" id="controls" style="display:none;">
+      <a onclick="reset()">↺ Start over</a>
+      <a href="playbook.html">Read the full playbook →</a>
+    </div>
+
+  </div>
+</main>
+
+<!-- ===================== TEMPLATES ===================== -->
+
+<!-- Q0: gate -->
+<template id="tpl-q0">
+  <div class="active-card">
+    <span class="q-num">Quick screen</span>
+    <h2>Do you have federal student loans and were you enrolled in SAVE?</h2>
+    <div class="why">
+      <strong>How to check:</strong> log into <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov">studentaid.gov</a> → "My Aid" → look at your repayment plan. If it says <em>SAVE</em>, you're in the right place.
+    </div>
+    <div class="answer-row">
+      <button class="answer-btn yes" data-next="q1" data-label="Yes, on SAVE">
+        <span class="lbl">Yes</span>Federal loans, on SAVE
+      </button>
+      <button class="answer-btn no" data-next="not-affected" data-label="No">
+        <span class="lbl">No</span>Private loans or not on SAVE
+      </button>
+    </div>
+  </div>
+</template>
+
+<!-- Q1: PSLF -->
+<template id="tpl-q1" data-short="PSLF track?">
+  <div class="active-card">
+    <span class="q-num">Question 1 of 4</span>
+    <h2>Are you pursuing Public Service Loan Forgiveness (PSLF)?</h2>
+    <p>PSLF = government, nonprofit, or qualifying healthcare employment + 120 qualifying monthly payments → tax-free loan forgiveness.</p>
+    <div class="why">
+      <strong>Why this is first:</strong> SAVE forbearance months don't count toward your 120. Every month you stay there is one you'll have to "buy back" later — and the buyback formula got more expensive March 31, 2026.
+    </div>
+    <div class="answer-row">
+      <button class="answer-btn yes" data-next="path-a" data-label="Yes">
+        <span class="lbl">Yes</span>I'm on PSLF track
+      </button>
+      <button class="answer-btn no" data-next="q2" data-label="No">
+        <span class="lbl">No</span>Not pursuing PSLF
+      </button>
+    </div>
+  </div>
+</template>
+
+<!-- Q2: Parent PLUS -->
+<template id="tpl-q2" data-short="Parent PLUS loans?">
+  <div class="active-card">
+    <span class="q-num">Question 2 of 4</span>
+    <h2>Do you have any Parent PLUS loans?</h2>
+    <p>Includes Parent PLUS loans you took out for your kid, Parent PLUS loans you've already consolidated, and any loans you've taken on from a parent.</p>
+    <div class="why">
+      <strong>Why this matters:</strong> a Direct Consolidation Loan must be <em>disbursed</em> by June 30, 2026, or you permanently lose access to IBR/ICR/RAP. Processing takes 30–90 days. Start now, this week.
+    </div>
+    <div class="answer-row">
+      <button class="answer-btn yes" data-next="path-b" data-label="Yes">
+        <span class="lbl">Yes</span>I have Parent PLUS
+      </button>
+      <button class="answer-btn no" data-next="q3" data-label="No">
+        <span class="lbl">No</span>No Parent PLUS
+      </button>
+    </div>
+  </div>
+</template>
+
+<!-- Q3: Pre-July 2014 -->
+<template id="tpl-q3" data-short="Pre-July 2014 loans?">
+  <div class="active-card">
+    <span class="q-num">Question 3 of 4</span>
+    <h2>Were your loans first disbursed before July 1, 2014?</h2>
+    <p>Check on studentaid.gov → "My Aid" → loan details for the disbursement date.</p>
+    <div class="why">
+      <strong>Why this matters:</strong> pre-July 2014 borrowers qualify for "Old IBR" (15% of discretionary income, 25-year forgiveness). Post-July 2014 is "New IBR" (10%, 20 years).
+    </div>
+    <div class="answer-row">
+      <button class="answer-btn yes" data-next="path-c" data-label="Pre-2014">
+        <span class="lbl">Yes</span>Pre-July 2014
+      </button>
+      <button class="answer-btn no" data-next="q4" data-label="July 2014 or later">
+        <span class="lbl">No</span>July 2014 or later
+      </button>
+    </div>
+  </div>
+</template>
+
+<!-- Q4: AGI -->
+<template id="tpl-q4" data-short="AGI vs balance?">
+  <div class="active-card">
+    <span class="q-num">Question 4 of 4</span>
+    <h2>Your AGI vs. your loan balance?</h2>
+    <p>Look at your Standard Plan monthly payment vs. your monthly income. If Standard is comfortably under 10% of your income, you're a "higher earner" case.</p>
+    <div class="why">
+      <strong>Why this matters:</strong> New IBR caps monthly payment at the 10-year Standard amount. For high earners, that cap often beats RAP's flat 1–10% of AGI. For lower earners, RAP's lower brackets usually win.
+    </div>
+    <div class="answer-row">
+      <button class="answer-btn yes" data-next="path-d" data-label="Higher earner">
+        <span class="lbl">Higher earner</span>Standard &lt; 10% of income
+      </button>
+      <button class="answer-btn no" data-next="path-e" data-label="Lower / moderate">
+        <span class="lbl">Lower / moderate</span>Standard is tight
+      </button>
+    </div>
+  </div>
+</template>
+
+<!-- Not affected -->
+<template id="tpl-not-affected">
+  <div class="destination">
+    <div class="destination-banner">
+      <span class="small">Result</span>
+      <span class="big">This guide isn't for you.</span>
+    </div>
+    <div class="destination-body">
+      <p>If you have private loans, this guide doesn't apply — call your private lender for repayment options.</p>
+      <p>If you have federal loans but you're not on SAVE, you may still be affected by the broader 2026 IDR changes (PAYE/ICR closing, RAP launching). <a href="playbook.html#deadlines">Read the deadline section of the playbook</a> for context.</p>
+    </div>
+  </div>
+</template>
+
+<!-- Path A -->
+<template id="tpl-path-a">
+  <div class="destination">
+    <div class="destination-banner">
+      <span class="small">Your path</span>
+      <span class="big">Path A — PSLF Track</span>
+    </div>
+    <div class="destination-body">
+      <p><strong>Your situation:</strong> government, nonprofit, or qualifying healthcare worker pursuing the 10-year forgiveness clock.</p>
+      <h3>This week — do these in order:</h3>
+      <ol>
+        <li><strong>Today:</strong> apply for IBR at <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/idr">studentaid.gov/idr</a>. Choose "Income-Based Repayment" — not RAP. New IBR (10%) if your loans first disbursed July 2014 or later; Old IBR (15%) if earlier.</li>
+        <li><strong>Once IBR is approved:</strong> submit a fresh PSLF Employment Certification Form to confirm your qualifying employment.</li>
+        <li><strong>Track every month</strong> of qualifying employment from now forward.</li>
+        <li><strong>Don't apply for buyback yet.</strong> Wait until you're at 120 qualifying months with a remaining balance.</li>
+      </ol>
+      <div class="callout">
+        <p><strong>Why this and not RAP:</strong> SAVE forbearance months are already non-qualifying. Don't add more by waiting. RAP has a 30-year forgiveness clock — too long for most PSLF-track borrowers.</p>
+      </div>
+      <p style="margin-top:18px;">
+        <a class="cta" target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/idr">Apply for IBR now</a>
+      </p>
+    </div>
+  </div>
+</template>
+
+<!-- Path B -->
+<template id="tpl-path-b">
+  <div class="destination parent-plus">
+    <div class="destination-banner">
+      <span class="small">Your path</span>
+      <span class="big">Path B — Parent PLUS Holder</span>
+    </div>
+    <div class="destination-body">
+      <p style="background:var(--danger-bg); border-left:4px solid var(--danger-edge); padding:14px 18px; border-radius:var(--radius-sm); font-weight:700; margin: 4px 0 14px;">
+        ⏰ Hard deadline: your Direct Consolidation must be <strong>disbursed</strong> by <strong>June 30, 2026</strong>. Not just submitted. Disbursed.
+      </p>
+      <h3>This week — do these in order:</h3>
+      <ol>
+        <li><strong>Today:</strong> apply for a Direct Consolidation Loan covering your Parent PLUS loans at <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/manage-loans/consolidation">studentaid.gov/manage-loans/consolidation</a>.</li>
+        <li><strong>Track the application weekly.</strong> Processing runs 30–90 days. Mid-May application = ~late June disbursement = cutting it very close.</li>
+        <li><strong>After consolidation disburses:</strong> apply for the right income-driven plan. The post-consolidation path may go through ICR before IBR — verify the current studentaid.gov walkthrough or call TISLA first.</li>
+      </ol>
+      <div class="callout warn">
+        <p><strong>If you miss June 30, 2026:</strong> your Parent PLUS loans are stuck on Standard Plan permanently. No income-based options ever. Plan accordingly.</p>
+      </div>
+      <div class="callout warn">
+        <p><strong>If you have BOTH your own loans AND Parent PLUS:</strong> talk to a student loan attorney or nonprofit advisor before consolidating — the order may lock you out of better options on your own loans. <a target="_blank" rel="noopener noreferrer" href="https://freestudentloanadvice.org">TISLA</a> offers free guidance.</p>
+      </div>
+      <p style="margin-top:18px;">
+        <a class="cta" target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/manage-loans/consolidation">Start consolidation</a>
+      </p>
+    </div>
+  </div>
+</template>
+
+<!-- Path C -->
+<template id="tpl-path-c">
+  <div class="destination">
+    <div class="destination-banner">
+      <span class="small">Your path</span>
+      <span class="big">Path C — Pre-July 2014 Borrower</span>
+    </div>
+    <div class="destination-body">
+      <p><strong>Your situation:</strong> first federal student loan disbursed before July 1, 2014. No PSLF. No Parent PLUS.</p>
+      <h3>This week:</h3>
+      <ol>
+        <li><strong>Run the simulator:</strong> <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/loan-simulator">studentaid.gov/loan-simulator</a>. Compare Old IBR (15%/25 years) vs RAP (1–10% AGI/30 years).</li>
+        <li><strong>For most pre-2014 borrowers, Old IBR wins</strong> on total cost. Shorter forgiveness clock + payment cap (10-year Standard amount) usually beats RAP's longer term and AGI-based formula.</li>
+        <li><strong>Run YOUR numbers</strong> — simulator takes 5 minutes and uses your actual loan data.</li>
+        <li><strong>Apply</strong> for the chosen plan at <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/idr">studentaid.gov/idr</a>.</li>
+      </ol>
+      <p style="margin-top:18px;">
+        <a class="cta" target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/loan-simulator">Run the simulator</a>
+      </p>
+    </div>
+  </div>
+</template>
+
+<!-- Path D -->
+<template id="tpl-path-d">
+  <div class="destination">
+    <div class="destination-banner">
+      <span class="small">Your path</span>
+      <span class="big">Path D — Higher Earner</span>
+    </div>
+    <div class="destination-body">
+      <p><strong>Your situation:</strong> post-July 2014 borrower, higher AGI relative to balance. No PSLF. No Parent PLUS.</p>
+      <h3>This week:</h3>
+      <ol>
+        <li><strong>Run the simulator:</strong> <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/loan-simulator">studentaid.gov/loan-simulator</a>. Compare New IBR (10%/20 years) vs RAP.</li>
+        <li><strong>For higher earners, New IBR usually wins:</strong> the payment cap (10-year Standard amount) beats RAP's flat-percentage AGI calculation.</li>
+        <li><strong>Double-check PSLF eligibility:</strong> even if you weren't planning on it, if you might switch to government or nonprofit work in the next decade, the math sometimes favors PSLF + IBR over straight payoff.</li>
+        <li><strong>Apply</strong> at <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/idr">studentaid.gov/idr</a>.</li>
+      </ol>
+      <p style="margin-top:18px;">
+        <a class="cta" target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/loan-simulator">Run the simulator</a>
+      </p>
+    </div>
+  </div>
+</template>
+
+<!-- Path E -->
+<template id="tpl-path-e">
+  <div class="destination">
+    <div class="destination-banner">
+      <span class="small">Your path</span>
+      <span class="big">Path E — Lower / Moderate Earner</span>
+    </div>
+    <div class="destination-body">
+      <p><strong>Your situation:</strong> post-July 2014 borrower, lower or moderate AGI. No PSLF. No Parent PLUS.</p>
+      <h3>This week:</h3>
+      <ol>
+        <li><strong>Run the simulator:</strong> <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/loan-simulator">studentaid.gov/loan-simulator</a>. Compare New IBR vs RAP carefully — for this group, the math is closer.</li>
+        <li><strong>2+ dependents?</strong> RAP's $50/dependent reduction stacks. Often beats New IBR.</li>
+        <li><strong>0–1 dependents?</strong> New IBR's poverty-line deduction often beats RAP's flat AGI calculation. Run the simulator.</li>
+        <li><strong>Watch the floor:</strong> RAP minimum is $10/month, no exceptions. If your SAVE payment was $0, you're not getting $0 going forward.</li>
+        <li><strong>Apply</strong> at <a target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/idr">studentaid.gov/idr</a>.</li>
+      </ol>
+      <div class="callout">
+        <p><strong>What's at stake:</strong> the wrong choice between IBR and RAP can cost thousands over the life of the loan. The simulator output is the truth — trust it over guidance.</p>
+      </div>
+      <p style="margin-top:18px;">
+        <a class="cta" target="_blank" rel="noopener noreferrer" href="https://studentaid.gov/loan-simulator">Run the simulator</a>
+      </p>
+    </div>
+  </div>
+</template>
+
+<footer class="site">
+  <img class="ghost-mini" src="assets/ghost-logo.png" alt="">
+  <p><strong>Ghost.zero</strong> — Not legal or tax advice. Free expert help: <a target="_blank" rel="noopener noreferrer" href="https://freestudentloanadvice.org">TISLA</a> · <a target="_blank" rel="noopener noreferrer" href="https://studentloanborrowerassistance.org">Student Loan Borrower Assistance</a></p>
+  <p class="muted">Last verified May 5, 2026 · re-checked biweekly</p>
+</footer>
+
+<script>
+  // ===== state =====
+  // trail = list of completed step entries: { step, short, answer }
+  // currentStep = id of step to display in #active
+  let trail = [];
+  let currentStep = 'q0';
+  const TERMINAL = new Set(['path-a','path-b','path-c','path-d','path-e','not-affected']);
+
+  // ===== render =====
+  function renderTrail() {
+    const trailEl = document.getElementById('trail');
+    trailEl.innerHTML = '';
+    trail.forEach((item, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'trail-chip';
+      chip.title = 'Click to rewind to this question';
+      chip.onclick = () => rewindTo(idx);
+      chip.innerHTML = `
+        <span class="check">✓</span>
+        <span class="chip-label"><strong>${item.short}</strong></span>
+        <span class="chip-answer">${item.answer}</span>
+        <span class="chip-rewind">rewind →</span>
+      `;
+      trailEl.appendChild(chip);
+
+      const conn = document.createElement('div');
+      conn.className = 'connector';
+      trailEl.appendChild(conn);
+    });
+  }
+
+  function renderActive() {
+    const activeEl = document.getElementById('active');
+    activeEl.innerHTML = '';
+    const tpl = document.getElementById('tpl-' + currentStep);
+    if (!tpl) return;
+    const node = tpl.content.cloneNode(true);
+    activeEl.appendChild(node);
+
+    // wire up answer buttons (only for question templates)
+    activeEl.querySelectorAll('.answer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const next = btn.dataset.next;
+        const answerLabel = btn.dataset.label;
+        const shortLabel = tpl.dataset.short || tpl.id.replace('tpl-', '');
+        trail.push({ step: currentStep, short: shortLabel, answer: answerLabel });
+        currentStep = next;
+        render();
+        // scroll the new active card into view nicely
+        setTimeout(() => {
+          const activeCard = document.querySelector('#active .active-card, #active .destination');
+          if (activeCard) activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      });
+    });
+
+    // show/hide controls
+    document.getElementById('controls').style.display = (trail.length > 0) ? 'flex' : 'none';
+  }
+
+  function render() { renderTrail(); renderActive(); }
+
+  function rewindTo(idx) {
+    if (idx < 0 || idx >= trail.length) return;
+    const item = trail[idx];
+    trail = trail.slice(0, idx);
+    currentStep = item.step;
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function reset() {
+    trail = [];
+    currentStep = 'q0';
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // init
+  render();
+</script>
+
+</body>
+</html>
